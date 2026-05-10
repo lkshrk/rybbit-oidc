@@ -38,15 +38,24 @@ export function getStartAndEndDate(time: Time): { startDate: string | null; endD
  * Build CommonApiParams from a Time object, handling all time modes including past-minutes.
  * This centralizes the logic for converting Time to API params across all hooks.
  */
+function sanitizeFilters(filters?: Filter[]): Filter[] | undefined {
+  if (!filters) return undefined;
+  const cleaned = filters.filter(
+    f => f.value.length > 0 && f.value.every(v => v !== "" && v !== null && v !== undefined)
+  );
+  return cleaned.length > 0 ? cleaned : undefined;
+}
+
 export function buildApiParams(time: Time, options: { filters?: Filter[] } = {}): CommonApiParams {
   const timeZone = getTimezone();
+  const filters = sanitizeFilters(options.filters);
 
   if (time.mode === "past-minutes") {
     return {
       startDate: "",
       endDate: "",
       timeZone,
-      filters: options.filters,
+      filters,
       pastMinutesStart: time.pastMinutesStart,
       pastMinutesEnd: time.pastMinutesEnd,
     };
@@ -57,7 +66,7 @@ export function buildApiParams(time: Time, options: { filters?: Filter[] } = {})
     startDate: startDate ?? "",
     endDate: endDate ?? "",
     timeZone,
-    filters: options.filters,
+    filters,
   };
 }
 

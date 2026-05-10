@@ -85,7 +85,6 @@
     "react-dom": "^19.2.4",
     "react-hook-form": "7.56.3",
     "react-hot-toast": "^2.6.0",
-    "react-select": "5.10.2",
     "react-syntax-highlighter": "^16.1.0",
     "rrweb-player": "^2.0.0-alpha.20",
     "sql-formatter": "^15.7.2",
