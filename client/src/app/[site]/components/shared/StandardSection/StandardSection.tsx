@@ -80,8 +80,8 @@ export function StandardSection({
               </TooltipTrigger>
               <TooltipContent>
                 {t("Geolocation by")}{" "}
-                <Link href="https://ipapi.is/" target="_blank" className="text-emerald-400 hover:text-emerald-300">
-                  ipapi.is
+                <Link href="https://www.maxmind.com/" target="_blank" className="text-emerald-400 hover:text-emerald-300">
+                  Maxmind
                 </Link>
               </TooltipContent>
             </Tooltip>

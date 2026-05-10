@@ -56,8 +56,8 @@ export default function PrivacyPolicy() {
         <p>
           When processing visitor data, IP addresses are only used temporarily to determine geographic location (country
           and region) using{" "}
-          <a href="https://ipapi.is/" className="text-emerald-400 hover:text-emerald-300" target="_blank">
-            ipapi.is
+          <a href="https://www.maxmind.com/" className="text-emerald-400 hover:text-emerald-300" target="_blank">
+            Maxmind
           </a>
           . The actual IP addresses are never stored in our database, preserving visitor anonymity while still providing
           geographic insights to website owners.

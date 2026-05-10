@@ -108,7 +108,7 @@ export default function DataProcessingAgreement() {
             <strong>Resend:</strong> Email delivery
           </li>
           <li>
-            <strong>ipapi.is:</strong> IP geolocation (IP addresses are processed but not stored)
+            <strong>Maxmind:</strong> IP geolocation (IP addresses are processed but not stored)
           </li>
         </ul>
 
