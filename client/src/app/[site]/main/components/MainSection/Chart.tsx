@@ -167,6 +167,42 @@ const getDragZoomBucket = (
     : null;
 };
 
+const hasDuplicateTickLabels = (
+  ticks: Date[],
+  formatLabel: (tick: Date) => string
+): boolean => {
+  const seen = new Set<string>();
+  for (const tick of ticks) {
+    const label = formatLabel(tick);
+    if (seen.has(label)) return true;
+    seen.add(label);
+  }
+  return false;
+};
+
+const reduceTicksForUniqueLabels = (
+  ticks: Date[],
+  maxTickCount: number,
+  formatLabel: (tick: Date) => string
+): Date[] => {
+  if (ticks.length <= 1) return ticks;
+
+  const safeMaxTickCount = Math.max(1, maxTickCount);
+  const initialStride = Math.max(
+    1,
+    Math.ceil(ticks.length / safeMaxTickCount)
+  );
+
+  for (let stride = initialStride; stride <= ticks.length; stride++) {
+    const sampled = ticks.filter((_, index) => index % stride === 0);
+    if (!hasDuplicateTickLabels(sampled, formatLabel)) {
+      return sampled;
+    }
+  }
+
+  return [ticks[0]];
+};
+
 type Point = {
   x: Date;
   y: number;
@@ -444,6 +480,8 @@ export function Chart({
     (time.mode === "past-minutes" && time.pastMinutesStart === 1440)
       ? Math.min(maxTicks, 24)
       : maxTicks;
+  const pastMinutesStartForTicks =
+    time.mode === "past-minutes" ? time.pastMinutesStart : undefined;
   const minuteTickInterval = useMemo(() => {
     if (!W || !chartMin || !chartMax || xTickCount <= 0) return null;
     if (!isExactRange && time.mode !== "past-minutes") return null;
@@ -478,6 +516,16 @@ export function Chart({
 
     const chartMinMs = chartMin.getTime();
     const chartMaxMs = chartMax.getTime();
+    const formatTickLabel = (tick: Date) =>
+      formatXTick(
+        tick,
+        time.mode,
+        bucket,
+        pastMinutesStartForTicks,
+        isExactRange,
+        minuteTickInterval !== null
+      );
+
     if (minuteTickInterval) {
       const min = DateTime.fromMillis(chartMinMs, { zone: "utc" }).setZone(
         timezone
@@ -498,7 +546,7 @@ export function Chart({
         safety++;
       }
 
-      return ticks;
+      return reduceTicksForUniqueLabels(ticks, xTickCount, formatTickLabel);
     }
 
     const anchorMs = current.length ? current[0].x.getTime() : chartMinMs;
@@ -524,9 +572,7 @@ export function Chart({
       safety++;
     }
 
-    if (ticks.length <= xTickCount) return ticks;
-    const stride = Math.max(1, Math.ceil(ticks.length / xTickCount));
-    return ticks.filter((_, i) => i % stride === 0);
+    return reduceTicksForUniqueLabels(ticks, xTickCount, formatTickLabel);
   }, [
     W,
     chartMin,
@@ -536,6 +582,9 @@ export function Chart({
     current,
     bucket,
     timezone,
+    time.mode,
+    pastMinutesStartForTicks,
+    isExactRange,
   ]);
 
   // Cap vertical gridlines at 8 so dense ranges don't get noisy. Subsample
