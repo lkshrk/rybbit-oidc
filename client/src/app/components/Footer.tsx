@@ -7,11 +7,15 @@ import { HeartIcon } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { LanguageSwitcher } from "../../components/LanguageSwitcher";
 
-export function Footer() {
+interface FooterProps {
+  disabled?: boolean;
+}
+
+export function Footer({ disabled = false }: FooterProps) {
   const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION;
   const { isWhiteLabel } = useWhiteLabel();
   const t = useExtracted();
-  if (isWhiteLabel) {
+  if (disabled || isWhiteLabel) {
     return null;
   }
 

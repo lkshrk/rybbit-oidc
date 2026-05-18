@@ -1283,5 +1283,10 @@
   "QOaR8l": "Submitted form to \"{action}\"",
   "IQ5tZg": "Submitted form",
   "+B+qvw": "Changed {type}input \"{name}\"",
-  "vDpLV2": "Changed {type}input"
+  "vDpLV2": "Changed {type}input",
+  "+CwN9C": "System",
+  "WNF1J6": "Choose how the embedded dashboard is displayed.",
+  "e3uG8o": "Open the generated dashboard embed URL in a new tab.",
+  "hC3Ykm": "Make this site public to try the dashboard embed.",
+  "oJEVob": "Try It Out"
 }

@@ -19,7 +19,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const router = useRouter();
   const { setSiteContext, site, privateKey } = useStore();
-  const { hideSidebar } = useEmbedPageOptions();
+  const { embed, hideSidebar } = useEmbedPageOptions();
 
   // Sync store state with URL parameters
   useSyncStateWithUrl();
@@ -70,7 +70,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
               !pathname.includes("/realtime") &&
               !pathname.includes("/replay") &&
               !pathname.includes("/globe") &&
-              !pathname.includes("/api-playground") && <Footer />}
+              !pathname.includes("/api-playground") && <Footer disabled={embed} />}
           </div>
         </div>
       </div>
