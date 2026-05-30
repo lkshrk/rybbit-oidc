@@ -132,7 +132,7 @@ function SidebarContent() {
             />
           )}
         </div>
-        {!privateKey && (
+        {/* {!privateKey && (
           <SidebarComponents.Item
             label={t("Feature Flags")}
             active={isActiveTab("feature-flags")}
@@ -147,7 +147,7 @@ function SidebarContent() {
             href={getTabPath("experiments")}
             icon={<FlaskConical className="w-4 h-4" />}
           />
-        )}
+        )} */}
         <SidebarComponents.Item
           label={t("Funnels")}
           active={isActiveTab("funnels")}
