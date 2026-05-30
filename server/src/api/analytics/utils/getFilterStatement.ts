@@ -58,16 +58,18 @@ export const getSqlParam = (parameter: FilterParameter) => {
     return `feature_flags[${SqlString.escape(key)}]`;
   }
 
-  // Handle URL parameters through the url_parameters map
+  // Handle URL parameters through the url_parameters map.
+  // The map key is attacker-controlled, so it must be escaped (matching the
+  // feature_flag branch above) — not raw-interpolated — to prevent SQL injection.
   if (parameter.startsWith("utm_") || parameter.startsWith("url_param:")) {
     // For explicit url_param: prefix (e.g., url_param:campaign_id)
     if (parameter.startsWith("url_param:")) {
       const paramName = parameter.substring("url_param:".length);
-      return `url_parameters['${paramName}']`;
+      return `url_parameters[${SqlString.escape(paramName)}]`;
     }
 
     const utm = parameter; // e.g., utm_source, utm_medium, etc.
-    return `url_parameters['${utm}']`;
+    return `url_parameters[${SqlString.escape(utm)}]`;
   }
 
   if (parameter === "referrer") {
