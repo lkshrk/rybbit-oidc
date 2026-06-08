@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../db/redis/redis.js", () => ({
-  redis: { quit: mocks.quit },
+  sessionRedis: { quit: mocks.quit },
   sessionGetOrCreate: (...args: unknown[]) => mocks.sessionGetOrCreate(...args),
 }));
 
@@ -58,16 +58,29 @@ describe("SessionsService (Redis-backed)", () => {
     mocks.sessionGetOrCreate.mockRejectedValue(new Error("redis down"));
 
     const first = await service.updateSession({ userId: "user-b", siteId: 7 });
-    // Same 30-minute bucket → same fallback id, so events still share a session.
+    // Still within the sliding window → same fallback id, so events stay grouped.
     vi.setSystemTime(new Date(Date.now() + SESSION_TTL_MS - 1000));
     const second = await service.updateSession({ userId: "user-b", siteId: 7 });
 
     expect(first.sessionId).toBe(second.sessionId);
-    expect(first.sessionId).toContain("7");
-    expect(first.sessionId).toContain("user-b");
+    expect(typeof first.sessionId).toBe("string");
+    expect(first.sessionId.length).toBeGreaterThan(0);
   });
 
-  it("rotates the fallback id once the time bucket advances", async () => {
+  it("reuses the real Redis session id when a later command blips, instead of splitting", async () => {
+    // The core regression guard: an intermittent Redis failure must not fracture
+    // a visitor into multiple sessions. The blip should inherit the real id.
+    mocks.sessionGetOrCreate.mockResolvedValueOnce("sess-real");
+    const ok = await service.updateSession({ userId: "user-d", siteId: 9 });
+
+    mocks.sessionGetOrCreate.mockRejectedValueOnce(new Error("redis blip"));
+    const blip = await service.updateSession({ userId: "user-d", siteId: 9 });
+
+    expect(ok.sessionId).toBe("sess-real");
+    expect(blip.sessionId).toBe("sess-real");
+  });
+
+  it("rotates the fallback id once the sliding window lapses", async () => {
     mocks.sessionGetOrCreate.mockRejectedValue(new Error("redis down"));
 
     const first = await service.updateSession({ userId: "user-c", siteId: 7 });
