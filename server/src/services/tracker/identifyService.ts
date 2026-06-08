@@ -41,10 +41,17 @@ const BACKFILL_DAYS = 30;
 
 async function backfillIdentifiedUserId(siteId: number, anonymousId: string, userId: string) {
   try {
-    const tables = ["events", "session_replay_events", "session_replay_metadata"];
-    for (const table of tables) {
+    // session_replay_metadata has no `timestamp` column; its time column is
+    // `start_time`. Using `timestamp` there throws ClickHouse error 47
+    // (UNKNOWN_IDENTIFIER), so map each table to its actual time column.
+    const tables: Array<{ name: string; timeColumn: string }> = [
+      { name: "events", timeColumn: "timestamp" },
+      { name: "session_replay_events", timeColumn: "timestamp" },
+      { name: "session_replay_metadata", timeColumn: "start_time" },
+    ];
+    for (const { name, timeColumn } of tables) {
       await clickhouse.command({
-        query: `ALTER TABLE ${table} UPDATE identified_user_id = {userId: String} WHERE site_id = {siteId: UInt16} AND user_id = {anonymousId: String} AND identified_user_id = '' AND timestamp >= now() - INTERVAL {days: UInt16} DAY`,
+        query: `ALTER TABLE ${name} UPDATE identified_user_id = {userId: String} WHERE site_id = {siteId: UInt16} AND user_id = {anonymousId: String} AND identified_user_id = '' AND ${timeColumn} >= now() - INTERVAL {days: UInt16} DAY`,
         query_params: { userId, siteId, anonymousId, days: BACKFILL_DAYS },
       });
     }
