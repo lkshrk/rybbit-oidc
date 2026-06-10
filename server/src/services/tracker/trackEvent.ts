@@ -293,6 +293,7 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
       request,
       blockBots: siteConfiguration.blockBots,
       trustedServerSideIngestion,
+      isMobileSite: siteConfiguration.type === "mobile",
       payload: {
         siteId: validatedPayload.site_id,
         userAgent: trackingIdentity.userAgent,

@@ -30,6 +30,12 @@ interface BotBlockingInput {
   request: FastifyRequest;
   blockBots: boolean;
   trustedServerSideIngestion?: boolean;
+  /**
+   * App/mobile site. The UA-pattern and header-heuristic layers are
+   * browser-shaped and produce false positives for native SDK traffic, so they
+   * are skipped for mobile sites (see checkBotBlocking).
+   */
+  isMobileSite?: boolean;
   payload: BotBlockingPayload;
 }
 
@@ -181,6 +187,7 @@ export async function checkBotBlocking({
   request,
   blockBots,
   trustedServerSideIngestion = false,
+  isMobileSite = false,
   payload,
 }: BotBlockingInput): Promise<BotDetectionResult | null> {
   const userAgent = payload.userAgent || (request.headers["user-agent"] as string) || "";
@@ -199,24 +206,32 @@ export async function checkBotBlocking({
     detections.push(detection);
   }
 
-  // Layer 1: User-agent classification (vendored from isbot patterns, with categories)
-  const uaClassification = classifyUA(userAgent);
-  if (uaClassification.isBot) {
-    addDetection("Bot detected using ua-pattern", {
-      layer: "ua_pattern",
-      botCategory: uaClassification.category,
-      matchedPattern: uaClassification.matchedPattern,
-    });
-  }
+  // Layers 1 and 2 are browser-shaped: they flag native HTTP clients (okhttp,
+  // CFNetwork, Cronet) as scripting frameworks and treat the absence of
+  // browser-only headers (Accept-Language, sec-fetch-*) as suspicious. A
+  // first-party mobile SDK legitimately looks exactly like that, so skip these
+  // layers for app/mobile sites and rely on the client-signal, ASN, and
+  // rate-anomaly layers below, which apply equally to native traffic.
+  if (!isMobileSite) {
+    // Layer 1: User-agent classification (vendored from isbot patterns, with categories)
+    const uaClassification = classifyUA(userAgent);
+    if (uaClassification.isBot) {
+      addDetection("Bot detected using ua-pattern", {
+        layer: "ua_pattern",
+        botCategory: uaClassification.category,
+        matchedPattern: uaClassification.matchedPattern,
+      });
+    }
 
-  // Layer 2: Header heuristic bot detection
-  const detection = detectBot(request, userAgent);
-  if (detection.isBot) {
-    addDetection("Bot detected using header heuristics", {
-      layer: "header_heuristics",
-      reason: detection.reason,
-      score: detection.score,
-    });
+    // Layer 2: Header heuristic bot detection
+    const detection = detectBot(request, userAgent);
+    if (detection.isBot) {
+      addDetection("Bot detected using header heuristics", {
+        layer: "header_heuristics",
+        reason: detection.reason,
+        score: detection.score,
+      });
+    }
   }
 
   // Layer 3: Client-side and client-derived bot signal score check

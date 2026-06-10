@@ -20,6 +20,32 @@ describe("header heuristic bot detection", () => {
     });
   });
 
+  it("detects default OkHttp React Native requests as scripting framework traffic", () => {
+    const result = detectBot(requestWithHeaders({}), "okhttp/4.12.0");
+
+    expect(result).toEqual({
+      isBot: true,
+      score: 5,
+      reason: "bot_framework:okhttp",
+    });
+  });
+
+  it("does not block React Native SDK requests that send SDK HTTP headers", () => {
+    const result = detectBot(
+      requestWithHeaders({
+        accept: "application/json",
+        "accept-language": "en-US,en;q=0.9",
+      }),
+      "Mozilla/5.0 (Linux; Android 36) AppleWebKit/537.36 (KHTML, like Gecko) RybbitReactNative/0.1.1"
+    );
+
+    expect(result).toEqual({
+      isBot: false,
+      score: 2,
+      reason: "missing_accept_encoding",
+    });
+  });
+
   it("scores missing browser headers", () => {
     const result = detectBot(requestWithHeaders({}), browserUserAgent);
 

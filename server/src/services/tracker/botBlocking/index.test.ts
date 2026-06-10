@@ -141,6 +141,42 @@ describe("checkBotBlocking", () => {
     });
   });
 
+  it("skips browser-shaped layers for mobile sites so native SDK clients are not flagged", async () => {
+    // Android React Native ships requests through okhttp with no browser headers.
+    // On a web site this trips both the UA-pattern and header-heuristic layers...
+    const asWeb = await checkBotBlocking({
+      request: requestWithHeaders({ "user-agent": "okhttp/4.12.0" }),
+      blockBots: true,
+      payload: { ...basePayload, userAgent: "okhttp/4.12.0", clientBotScore: 0, clientBotSignalMask: 0 },
+    });
+    expect(asWeb).toMatchObject({ isBot: true });
+
+    // ...but a mobile/app site treats it as legitimate first-party traffic.
+    const asMobile = await checkBotBlocking({
+      request: requestWithHeaders({ "user-agent": "okhttp/4.12.0" }),
+      blockBots: true,
+      isMobileSite: true,
+      payload: { ...basePayload, userAgent: "okhttp/4.12.0", clientBotScore: 0, clientBotSignalMask: 0 },
+    });
+    expect(asMobile).toBeNull();
+  });
+
+  it("still flags mobile traffic through client signals, ASN, and rate anomaly", async () => {
+    const result = await checkBotBlocking({
+      request: requestWithHeaders({ "user-agent": "okhttp/4.12.0" }),
+      blockBots: true,
+      isMobileSite: true,
+      payload: { ...basePayload, userAgent: "okhttp/4.12.0", clientBotScore: 5 },
+    });
+
+    expect(result).toMatchObject({
+      isBot: true,
+      message: "Bot detected using client signals",
+    });
+    // The browser-shaped layers stay silent; only the native-applicable layer fires.
+    expect(result?.detections.map(detection => detection.layer)).toEqual(["client_signals"]);
+  });
+
   it("records client bot score and signal aggregates for inspected requests", async () => {
     const request = requestWithHeaders(browserHeaders);
 
