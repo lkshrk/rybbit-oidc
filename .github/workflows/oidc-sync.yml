@@ -132,6 +132,7 @@ jobs:
           fail_with_pr() {
             local title="$1"
             local section="$2"
+            local report_path=".github/sync-${UPSTREAM_TAG}.md"
             {
               echo "## ${section}"
               echo
@@ -143,6 +144,12 @@ jobs:
             if [ "$DRY_RUN" = "true" ]; then
               cat "$REPORT"
               exit 1
+            fi
+
+            cp "$REPORT" "$report_path"
+            git add -f "$report_path"
+            if ! git diff --cached --quiet; then
+              git commit -m "chore: report failed upstream sync ${UPSTREAM_TAG}"
             fi
 
             create_or_update_pr "$title"
