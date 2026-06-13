@@ -192,7 +192,6 @@ jobs:
             exit 1
           fi
 
-          VERSION="${UPSTREAM_TAG#"$TAG_PREFIX"}"
           VERSION_FAILURES=0
           {
             echo "## Version checks"
@@ -200,15 +199,16 @@ jobs:
           } >> "$REPORT"
           while IFS= read -r file; do
             actual="$(node -e "console.log(require('./${file}').version)")"
-            echo "- ${file}: ${actual}" >> "$REPORT"
-            if [ "$actual" != "$VERSION" ]; then
+            expected="$(git show "${UPSTREAM_REF}:${file}" | jq -r '.version')"
+            echo "- ${file}: ${actual} (upstream ${UPSTREAM_TAG}: ${expected})" >> "$REPORT"
+            if [ "$actual" != "$expected" ]; then
               VERSION_FAILURES=1
             fi
           done < <(jq -r '.requiredVersionFiles[]' "$CONFIG")
           echo >> "$REPORT"
 
           if [ "$VERSION_FAILURES" -ne 0 ]; then
-            echo "Expected all required version files to match ${VERSION}." > "$LOG"
+            echo "Expected all required version files to match upstream ${UPSTREAM_TAG}." > "$LOG"
             fail_with_pr "Sync upstream ${UPSTREAM_TAG} has version mismatch" "Version mismatch"
           fi
 
