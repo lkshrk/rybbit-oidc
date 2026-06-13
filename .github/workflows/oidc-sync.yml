@@ -242,7 +242,7 @@ jobs:
 
           run_check "server:npm-ci" npm --prefix server ci --legacy-peer-deps
           run_check "server:npm-run-test-run" npm --prefix server run test:run
-          run_check "server:tsc-no-emit" npm --prefix server exec -- tsc --noEmit
+          run_check "server:tsc-no-emit" bash -lc "cd server && npx tsc --noEmit"
           run_check "server:npm-run-build" npm --prefix server run build
 
           run_check "client:npm-ci" npm --prefix client ci --legacy-peer-deps
