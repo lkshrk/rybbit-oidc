@@ -13,9 +13,16 @@ interface SocialButtonsProps {
   callbackURL?: string;
   mode?: "signin" | "signup";
   className?: string;
+  showEmailDivider?: boolean;
 }
 
-export function SocialButtons({ onError, callbackURL, mode = "signin", className = "" }: SocialButtonsProps) {
+export function SocialButtons({
+  onError,
+  callbackURL,
+  mode = "signin",
+  className = "",
+  showEmailDivider = true,
+}: SocialButtonsProps) {
   const t = useExtracted();
   const { configs, isLoading } = useConfigs();
 
@@ -74,11 +81,13 @@ export function SocialButtons({ onError, callbackURL, mode = "signin", className
           </>
         )}
       </div>
-      <div className="relative flex items-center text-xs uppercase">
-        <div className="flex-1 border-t border-neutral-200 dark:border-neutral-800" />
-        <span className="px-3 text-muted-foreground">{t("Or continue with email")}</span>
-        <div className="flex-1 border-t border-neutral-200 dark:border-neutral-800" />
-      </div>
+      {showEmailDivider && (
+        <div className="relative flex items-center text-xs uppercase">
+          <div className="flex-1 border-t border-neutral-200 dark:border-neutral-800" />
+          <span className="px-3 text-muted-foreground">{t("Or continue with email")}</span>
+          <div className="flex-1 border-t border-neutral-200 dark:border-neutral-800" />
+        </div>
+      )}
     </>
   );
 }

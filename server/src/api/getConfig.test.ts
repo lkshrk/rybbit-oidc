@@ -7,6 +7,7 @@ const originalEnv = process.env;
 
 afterEach(() => {
   process.env = originalEnv;
+  vi.resetModules();
 });
 
 describe("getConfig", () => {
@@ -52,6 +53,27 @@ describe("getConfig", () => {
     expect(send).toHaveBeenCalledWith(
       expect.objectContaining({
         oidcProvider: null,
+      })
+    );
+  });
+
+  it("exposes credential login disablement", async () => {
+    process.env = {
+      ...originalEnv,
+      DISABLE_CREDENTIAL_LOGIN: "true",
+    };
+    vi.resetModules();
+    const { getConfig: getConfigWithEnv } = await import("./getConfig.js");
+    const send = vi.fn();
+    const reply = {
+      send,
+    } as unknown as FastifyReply;
+
+    await getConfigWithEnv({} as never, reply);
+
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        disableCredentialLogin: true,
       })
     );
   });

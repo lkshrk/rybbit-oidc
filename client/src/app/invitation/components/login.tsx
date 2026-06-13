@@ -8,6 +8,7 @@ import { AuthInput } from "@/components/auth/AuthInput";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { AuthError } from "@/components/auth/AuthError";
 import { SocialButtons } from "@/components/auth/SocialButtons";
+import { useConfigs } from "@/lib/configs";
 
 interface LoginProps {
   callbackURL: string;
@@ -15,6 +16,7 @@ interface LoginProps {
 
 export function Login({ callbackURL }: LoginProps) {
   const t = useExtracted();
+  const { configs, isLoading: isLoadingConfigs } = useConfigs();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [email, setEmail] = useState("");
@@ -48,6 +50,17 @@ export function Login({ callbackURL }: LoginProps) {
       setIsLoading(false);
     }
   };
+
+  if (isLoadingConfigs) return null;
+
+  if (configs?.disableCredentialLogin) {
+    return (
+      <div className="flex flex-col gap-4">
+        <SocialButtons onError={setError} callbackURL={callbackURL} showEmailDivider={false} />
+        <AuthError error={error} />
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleLogin}>

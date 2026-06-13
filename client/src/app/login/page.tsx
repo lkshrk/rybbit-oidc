@@ -27,6 +27,7 @@ export default function Page() {
   const [error, setError] = useState<string>();
   const [turnstileToken, setTurnstileToken] = useState<string>("");
   const router = useRouter();
+  const showCredentialLogin = !isLoadingConfigs && !configs?.disableCredentialLogin;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,58 +87,60 @@ export default function Page() {
         <div className="flex-1 flex flex-col justify-center w-full max-w-[550px] mx-auto">
           <h1 className="text-lg text-neutral-600 dark:text-neutral-300 mb-6">{t("Welcome back")}</h1>
           <div className="flex flex-col gap-4">
-            <SocialButtons onError={setError} />
-            <form onSubmit={handleSubmit}>
-              <div className="flex flex-col gap-4">
-                <AuthInput
-                  id="email"
-                  label={t("Email")}
-                  type="email"
-                  placeholder="example@email.com"
-                  required
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                />
-
-                <AuthInput
-                  id="password"
-                  label={t("Password")}
-                  type="password"
-                  placeholder="••••••••"
-                  required
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  rightElement={
-                    IS_CLOUD && (
-                      <Link href="/reset-password" className="text-xs text-muted-foreground hover:text-primary">
-                        {t("Forgot password?")}
-                      </Link>
-                    )
-                  }
-                />
-
-                {turnstileEnabled && (
-                  <Turnstile
-                    onSuccess={token => setTurnstileToken(token)}
-                    onError={() => setTurnstileToken("")}
-                    onExpire={() => setTurnstileToken("")}
-                    className="flex justify-center"
+            <SocialButtons onError={setError} showEmailDivider={showCredentialLogin} />
+            {showCredentialLogin && (
+              <form onSubmit={handleSubmit}>
+                <div className="flex flex-col gap-4">
+                  <AuthInput
+                    id="email"
+                    label={t("Email")}
+                    type="email"
+                    placeholder="example@email.com"
+                    required
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
                   />
-                )}
 
-                <AuthButton
-                  isLoading={isLoading}
-                  loadingText={t("Logging in...")}
-                  disabled={turnstileEnabled ? !turnstileToken || isLoading : isLoading}
-                >
-                  {t("Login")}
-                </AuthButton>
+                  <AuthInput
+                    id="password"
+                    label={t("Password")}
+                    type="password"
+                    placeholder="••••••••"
+                    required
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    rightElement={
+                      IS_CLOUD && (
+                        <Link href="/reset-password" className="text-xs text-muted-foreground hover:text-primary">
+                          {t("Forgot password?")}
+                        </Link>
+                      )
+                    }
+                  />
 
-                <AuthError error={error} title={t("Error Logging In")} />
-              </div>
-            </form>
+                  {turnstileEnabled && (
+                    <Turnstile
+                      onSuccess={token => setTurnstileToken(token)}
+                      onError={() => setTurnstileToken("")}
+                      onExpire={() => setTurnstileToken("")}
+                      className="flex justify-center"
+                    />
+                  )}
 
-            {(!configs?.disableSignup || !isLoadingConfigs) && (
+                  <AuthButton
+                    isLoading={isLoading}
+                    loadingText={t("Logging in...")}
+                    disabled={turnstileEnabled ? !turnstileToken || isLoading : isLoading}
+                  >
+                    {t("Login")}
+                  </AuthButton>
+
+                  <AuthError error={error} title={t("Error Logging In")} />
+                </div>
+              </form>
+            )}
+
+            {showCredentialLogin && !configs?.disableSignup && (
               <div className="text-center text-sm">
                 {t("Don't have an account?")}{" "}
                 <Link

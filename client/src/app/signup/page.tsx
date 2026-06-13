@@ -280,7 +280,7 @@ function SignupPageContent() {
     return null;
   }
 
-  if (configs?.disableSignup) {
+  if (configs?.disableSignup || configs?.disableCredentialLogin) {
     return (
       <div className="flex justify-center items-center h-dvh w-full">
         <Card className="w-full max-w-sm p-1">

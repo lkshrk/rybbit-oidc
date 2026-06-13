@@ -11,7 +11,13 @@ import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
 import { invitation, member, memberSiteAccess, sites, user } from "../db/postgres/schema.js";
 import { invalidateSitesAccessCache } from "./auth-utils.js";
-import { API_RATE_LIMIT_WINDOW, DISABLE_SIGNUP, IS_CLOUD, STANDARD_API_RATE_LIMIT } from "./const.js";
+import {
+  API_RATE_LIMIT_WINDOW,
+  DISABLE_CREDENTIAL_LOGIN,
+  DISABLE_SIGNUP,
+  IS_CLOUD,
+  STANDARD_API_RATE_LIMIT,
+} from "./const.js";
 import {
   addContactToAudience,
   sendChangeEmailVerification,
@@ -203,7 +209,7 @@ export const auth = betterAuth({
     password: process.env.POSTGRES_PASSWORD,
   }),
   emailAndPassword: {
-    enabled: true,
+    enabled: !DISABLE_CREDENTIAL_LOGIN,
     // Disable email verification for now
     requireEmailVerification: false,
     disableSignUp: DISABLE_SIGNUP,

@@ -10,6 +10,7 @@ import { AuthButton } from "@/components/auth/AuthButton";
 import { AuthError } from "@/components/auth/AuthError";
 import { SocialButtons } from "@/components/auth/SocialButtons";
 import { Turnstile } from "@/components/auth/Turnstile";
+import { useConfigs } from "@/lib/configs";
 
 interface SignupProps {
   callbackURL: string;
@@ -17,6 +18,7 @@ interface SignupProps {
 
 export function Signup({ callbackURL }: SignupProps) {
   const t = useExtracted();
+  const { configs, isLoading: isLoadingConfigs } = useConfigs();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [email, setEmail] = useState("");
@@ -68,6 +70,17 @@ export function Signup({ callbackURL }: SignupProps) {
       setIsLoading(false);
     }
   };
+
+  if (isLoadingConfigs) return null;
+
+  if (configs?.disableCredentialLogin) {
+    return (
+      <div className="flex flex-col gap-4">
+        <SocialButtons onError={setError} callbackURL={callbackURL} mode="signup" showEmailDivider={false} />
+        <AuthError error={error} />
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSignup}>
