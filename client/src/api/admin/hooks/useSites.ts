@@ -12,14 +12,35 @@ import {
   VerifyScriptResponse
 } from "../endpoints";
 
+const PUBLIC_ROUTES = ["/login", "/signup", "/invitation", "/reset-password", "/as/callback"];
+
+export function shouldFetchOrganizationSites({
+  organizationId,
+  pathname,
+  userId,
+}: {
+  organizationId?: string;
+  pathname?: string;
+  userId?: string;
+}) {
+  return Boolean(organizationId && userId && (!pathname || !PUBLIC_ROUTES.includes(pathname)));
+}
+
 export function useGetSitesFromOrg(organizationId?: string) {
+  const pathname = usePathname();
+  const { data: session } = authClient.useSession();
+
   return useQuery<GetSitesFromOrgResponse>({
     queryKey: ["get-sites-from-org", organizationId],
     queryFn: () => {
       return fetchSitesFromOrg(organizationId!);
     },
     staleTime: 60000, // 1 minute
-    enabled: !!organizationId,
+    enabled: shouldFetchOrganizationSites({
+      organizationId,
+      pathname,
+      userId: session?.user?.id,
+    }),
   });
 }
 
