@@ -237,6 +237,18 @@ jobs:
             } >> "$REPORT"
           }
 
+          cleanup_generated_artifacts() {
+            local paths=(
+              "client/.next"
+              "test-results"
+              "tests/oidc-login.yaml.spec.ts"
+              "tests/oidc-login.spec.ts"
+            )
+
+            chmod -R u+w "${paths[@]}" 2>/dev/null || true
+            rm -rf "${paths[@]}" 2>/dev/null || sudo rm -rf "${paths[@]}"
+          }
+
           run_check "shared:npm-ci" npm --prefix shared ci
           run_check "shared:npm-run-build" npm --prefix shared run build
 
@@ -249,9 +261,9 @@ jobs:
           run_check "client:npm-run-lint" npm --prefix client run lint
           run_check "client:npm-run-build" npm --prefix client run build
 
-          rm -rf client/.next test-results tests/oidc-login.yaml.spec.ts tests/oidc-login.spec.ts
+          run_check "cleanup:pre-oidc-e2e" cleanup_generated_artifacts
           run_check "oidc:e2e-docker" npm --prefix client run test:e2e:oidc
-          rm -rf client/.next test-results tests/oidc-login.yaml.spec.ts tests/oidc-login.spec.ts
+          run_check "cleanup:post-oidc-e2e" cleanup_generated_artifacts
           git checkout -- client/messages || true
 
           {
