@@ -1,0 +1,283 @@
+name: Sync Upstream Rybbit
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_tag:
+        description: "Optional upstream tag to sync, for example v2.6.1"
+        required: false
+        type: string
+      dry_run:
+        description: "Run merge and tests without pushing, tagging, or releasing"
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    - cron: "0 4 * * *"
+
+concurrency:
+  group: oidc-upstream-sync
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    name: Sync latest upstream release
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v6.0.3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN || github.token }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync, test, and release
+        env:
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
+          INPUT_UPSTREAM_TAG: ${{ inputs.upstream_tag }}
+          DRY_RUN: ${{ inputs.dry_run || false }}
+        run: |
+          set -eu
+
+          CONFIG=".github/oidc-sync.json"
+          UPSTREAM="$(jq -r '.upstream' "$CONFIG")"
+          TARGET_BRANCH="$(jq -r '.targetBranch' "$CONFIG")"
+          TAG_PREFIX="$(jq -r '.releaseTagPrefix' "$CONFIG")"
+          SUCCESS_MODE="$(jq -r '.successMode' "$CONFIG")"
+          FAILURE_MODE="$(jq -r '.failureMode' "$CONFIG")"
+          FAILURE_BRANCH_PREFIX="$(jq -r '.failureBranchPrefix' "$CONFIG")"
+          PUBLISH_WORKFLOW="$(jq -r '.publishWorkflow' "$CONFIG")"
+
+          if [ "$SUCCESS_MODE" != "push_target_branch_create_release" ]; then
+            echo "Unsupported successMode: ${SUCCESS_MODE}"
+            exit 1
+          fi
+
+          if [ "$FAILURE_MODE" != "open_pull_request" ]; then
+            echo "Unsupported failureMode: ${FAILURE_MODE}"
+            exit 1
+          fi
+
+          git remote add upstream "$UPSTREAM" || git remote set-url upstream "$UPSTREAM"
+          git fetch origin "$TARGET_BRANCH" --tags
+
+          if [ -n "$INPUT_UPSTREAM_TAG" ]; then
+            UPSTREAM_TAG="$INPUT_UPSTREAM_TAG"
+          else
+            UPSTREAM_TAG="$(git ls-remote --tags upstream "refs/tags/${TAG_PREFIX}*" \
+              | awk '{print $2}' \
+              | sed 's#refs/tags/##; s#\^{}##' \
+              | sort -Vu \
+              | tail -1)"
+          fi
+
+          if [ -z "$UPSTREAM_TAG" ]; then
+            echo "No upstream release tag found."
+            exit 0
+          fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/${UPSTREAM_TAG}" >/dev/null 2>&1; then
+            echo "Fork already has ${UPSTREAM_TAG}; nothing to do."
+            exit 0
+          fi
+
+          UPSTREAM_REF="refs/upstream-tags/${UPSTREAM_TAG}"
+          git fetch --no-tags upstream "refs/tags/${UPSTREAM_TAG}:${UPSTREAM_REF}"
+
+          SYNC_BRANCH="${FAILURE_BRANCH_PREFIX}${UPSTREAM_TAG}"
+          REPORT="$(mktemp)"
+          LOG="$(mktemp)"
+          {
+            echo "# Upstream sync ${UPSTREAM_TAG}"
+            echo
+            echo "- Upstream: ${UPSTREAM}"
+            echo "- Target branch: ${TARGET_BRANCH}"
+            echo "- Sync branch: ${SYNC_BRANCH}"
+            echo "- Success mode: ${SUCCESS_MODE}"
+            echo "- Failure mode: ${FAILURE_MODE}"
+            echo "- Dry run: ${DRY_RUN}"
+            echo
+          } > "$REPORT"
+
+          create_or_update_pr() {
+            local title="$1"
+            git push --force-with-lease origin "HEAD:${SYNC_BRANCH}"
+
+            if gh pr view "$SYNC_BRANCH" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh pr edit "$SYNC_BRANCH" \
+                --repo "$GITHUB_REPOSITORY" \
+                --title "$title" \
+                --body-file "$REPORT"
+            else
+              gh pr create \
+                --repo "$GITHUB_REPOSITORY" \
+                --base "$TARGET_BRANCH" \
+                --head "$SYNC_BRANCH" \
+                --title "$title" \
+                --body-file "$REPORT"
+            fi
+          }
+
+          fail_with_pr() {
+            local title="$1"
+            local section="$2"
+            {
+              echo "## ${section}"
+              echo
+              echo '```text'
+              tail -200 "$LOG"
+              echo '```'
+            } >> "$REPORT"
+
+            if [ "$DRY_RUN" = "true" ]; then
+              cat "$REPORT"
+              exit 1
+            fi
+
+            create_or_update_pr "$title"
+            exit 1
+          }
+
+          git switch -c "$SYNC_BRANCH" "origin/${TARGET_BRANCH}"
+
+          set +e
+          git merge --no-edit "$UPSTREAM_REF" >"$LOG" 2>&1
+          MERGE_STATUS=$?
+          set -e
+
+          if [ "$MERGE_STATUS" -ne 0 ]; then
+            {
+              echo "## Merge conflict"
+              echo
+              echo "Automatic merge of upstream ${UPSTREAM_TAG} failed."
+              echo
+              echo "Conflicted files:"
+              echo
+              git diff --name-only --diff-filter=U | sed 's/^/- /'
+              echo
+              echo '```text'
+              cat "$LOG"
+              echo '```'
+            } >> "$REPORT"
+
+            git merge --abort || true
+            printf "\n## Sync failure report\n\nSee PR body for conflict details.\n" > ".github/sync-${UPSTREAM_TAG}.md"
+            git add -f ".github/sync-${UPSTREAM_TAG}.md"
+            git commit -m "chore: report failed upstream sync ${UPSTREAM_TAG}"
+
+            if [ "$DRY_RUN" = "true" ]; then
+              cat "$REPORT"
+              exit 1
+            fi
+
+            create_or_update_pr "Sync upstream ${UPSTREAM_TAG} requires conflict resolution"
+            exit 1
+          fi
+
+          VERSION="${UPSTREAM_TAG#"$TAG_PREFIX"}"
+          VERSION_FAILURES=0
+          {
+            echo "## Version checks"
+            echo
+          } >> "$REPORT"
+          while IFS= read -r file; do
+            actual="$(node -e "console.log(require('./${file}').version)")"
+            echo "- ${file}: ${actual}" >> "$REPORT"
+            if [ "$actual" != "$VERSION" ]; then
+              VERSION_FAILURES=1
+            fi
+          done < <(jq -r '.requiredVersionFiles[]' "$CONFIG")
+          echo >> "$REPORT"
+
+          if [ "$VERSION_FAILURES" -ne 0 ]; then
+            echo "Expected all required version files to match ${VERSION}." > "$LOG"
+            fail_with_pr "Sync upstream ${UPSTREAM_TAG} has version mismatch" "Version mismatch"
+          fi
+
+          run_check() {
+            local name="$1"
+            shift
+            echo "::group::${name}"
+            {
+              echo "## ${name}"
+              echo
+              echo "Command: \`$*\`"
+              echo
+            } >> "$REPORT"
+            set +e
+            "$@" >"$LOG" 2>&1
+            local status=$?
+            set -e
+            cat "$LOG"
+            echo "::endgroup::"
+            if [ "$status" -ne 0 ]; then
+              fail_with_pr "Sync upstream ${UPSTREAM_TAG} failed ${name}" "${name}"
+            fi
+            {
+              echo "Passed."
+              echo
+            } >> "$REPORT"
+          }
+
+          run_check "shared:npm-ci" npm --prefix shared ci
+          run_check "shared:npm-run-build" npm --prefix shared run build
+
+          run_check "server:npm-ci" npm --prefix server ci --legacy-peer-deps
+          run_check "server:npm-run-test-run" npm --prefix server run test:run
+          run_check "server:tsc-no-emit" npm --prefix server exec -- tsc --noEmit
+          run_check "server:npm-run-build" npm --prefix server run build
+
+          run_check "client:npm-ci" npm --prefix client ci --legacy-peer-deps
+          run_check "client:npm-run-lint" npm --prefix client run lint
+          run_check "client:npm-run-build" npm --prefix client run build
+
+          rm -rf client/.next test-results tests/oidc-login.yaml.spec.ts tests/oidc-login.spec.ts
+          run_check "oidc:e2e-docker" npm --prefix client run test:e2e:oidc
+          rm -rf client/.next test-results tests/oidc-login.yaml.spec.ts tests/oidc-login.spec.ts
+          git checkout -- client/messages || true
+
+          {
+            echo "## Result"
+            echo
+            echo "All required checks passed. ${UPSTREAM_TAG} is ready for release."
+          } >> "$REPORT"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            cat "$REPORT"
+            exit 0
+          fi
+
+          git status --short
+          if [ -n "$(git status --short)" ]; then
+            git add -A
+            git commit -m "chore: clean sync artifacts for ${UPSTREAM_TAG}"
+          fi
+
+          git push origin "HEAD:${TARGET_BRANCH}"
+          git tag -a "$UPSTREAM_TAG" -m "Release ${UPSTREAM_TAG}"
+          git push origin "$UPSTREAM_TAG"
+
+          if gh release view "$UPSTREAM_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$UPSTREAM_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$UPSTREAM_TAG" \
+              --notes "Rybbit ${UPSTREAM_TAG} with OIDC login and group/team mapping."
+          else
+            gh release create "$UPSTREAM_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$UPSTREAM_TAG" \
+              --notes "Rybbit ${UPSTREAM_TAG} with OIDC login and group/team mapping."
+          fi
+
+          gh workflow run "$PUBLISH_WORKFLOW" --repo "$GITHUB_REPOSITORY" --ref "$UPSTREAM_TAG"

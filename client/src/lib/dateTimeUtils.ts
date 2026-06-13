@@ -2,8 +2,20 @@ import { TimeBucket } from "@rybbit/shared";
 import { DateTime, Duration, DurationLikeObject, Settings } from "luxon";
 import { getTimezone } from "./store";
 
+export function normalizeBrowserLocale(locale: string | undefined): string {
+  if (!locale) return "en-US";
+
+  const normalized = locale.replace(/_/g, "-").split("@")[0];
+
+  try {
+    return Intl.getCanonicalLocales(normalized)[0] ?? "en-US";
+  } catch {
+    return "en-US";
+  }
+}
+
 // Detect user locale from the browser environment (fallback to 'en-US' on server)
-export const userLocale = typeof navigator !== "undefined" ? navigator.language : "en-US";
+export const userLocale = normalizeBrowserLocale(typeof navigator !== "undefined" ? navigator.language : undefined);
 
 // Detect whether the user prefers 12-hour time format (true = 12h, false = 24h)
 const resolved = new Intl.DateTimeFormat(userLocale, {

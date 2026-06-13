@@ -5,6 +5,9 @@ interface Configs {
   disableSignup: boolean;
   mapboxToken: string;
   liteDashboard: boolean;
+  oidcProvider: {
+    name: string;
+  } | null;
 }
 
 export function useConfigs() {

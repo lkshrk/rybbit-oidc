@@ -34,6 +34,9 @@ clickhouse-data/
 # Testing
 coverage/
 .nyc_output/
+.e2e-node-modules/
+**/*.yaml.spec.ts
+tests/oidc-login.spec.ts
 
 # Temporary files
 *.tmp
@@ -51,6 +54,9 @@ coverage/
 
 .deepsec/
 
-.github/
+.github/*
+!.github/workflows/
+!.github/workflows/oidc-sync.yml
+!.github/oidc-sync.json
 
 .impeccable/critique

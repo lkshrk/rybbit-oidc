@@ -1,0 +1,31 @@
+# Spec: specs/tests/oidc.md
+goal: OIDC login creates a Rybbit session for the local IdP user
+base_url: http://127.0.0.1:3002
+
+statements:
+  - URL: /login
+
+  - VERIFY: The login page shows the E2E SSO OIDC provider button.
+    js: |
+      await expect(page.getByRole('button', { name: 'E2E SSO' })).toBeVisible({ timeout: 5000 })
+
+  - intent: Start OIDC sign-in with the E2E SSO provider.
+    action: click
+    locator: "getByRole('button', { name: 'E2E SSO' })"
+
+  - VERIFY: The local OIDC provider sign-in page is visible.
+    js: |
+      await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible({ timeout: 5000 })
+
+  - intent: Approve sign-in on the local OIDC provider page.
+    action: click
+    locator: "getByRole('button', { name: 'Sign in' })"
+
+  - VERIFY: The browser has returned from the local OIDC provider to Rybbit.
+    js: await expect.poll(() => page.url()).not.toContain('3556')
+
+  - VERIFY: The authenticated Rybbit session belongs to oidc-user@example.com.
+    js: |
+      await expect
+        .poll(async () => (await (await page.context().request.get('http://127.0.0.1:3001/api/auth/get-session')).json())?.user?.email)
+        .toBe('oidc-user@example.com')

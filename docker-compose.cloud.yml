@@ -146,6 +146,14 @@ services:
       - OPENROUTER_MODEL=${OPENROUTER_MODEL}
       - CLUSTER_WORKERS=${CLUSTER_WORKERS:-4}
       - BETTER_AUTH_API_KEY=${BETTER_AUTH_API_KEY}
+      # Optional OpenID Connect provider.
+      - OIDC_NAME=${OIDC_NAME}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
+      - OIDC_DISCOVERY_URL=${OIDC_DISCOVERY_URL}
+      - OIDC_SCOPES=${OIDC_SCOPES}
+      - OIDC_GROUP_CLAIM=${OIDC_GROUP_CLAIM}
+      - OIDC_GROUP_MAPPING=${OIDC_GROUP_MAPPING}
     depends_on:
       clickhouse:
         condition: service_healthy

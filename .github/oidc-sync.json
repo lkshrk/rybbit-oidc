@@ -1,0 +1,19 @@
+{
+  "upstream": "https://github.com/rybbit-io/rybbit.git",
+  "releaseTagPrefix": "v",
+  "targetBranch": "master",
+  "successMode": "push_target_branch_create_release",
+  "failureMode": "open_pull_request",
+  "failureBranchPrefix": "sync/",
+  "publishWorkflow": "docker-publish.yml",
+  "requiredVersionFiles": ["client/package.json", "server/package.json"],
+  "requiredChecks": [
+    "server:npm-run-test-run",
+    "server:tsc-no-emit",
+    "server:npm-run-build",
+    "shared:npm-run-build",
+    "client:npm-run-lint",
+    "client:npm-run-build",
+    "oidc:e2e-docker"
+  ]
+}

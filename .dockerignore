@@ -1,0 +1,14 @@
+**/node_modules
+**/.next
+**/dist
+**/build
+**/coverage
+**/test-results
+**/shiplight-report
+.git
+.omx
+.shiplight
+.env
+.env.*
+docker-volumes
+clickhouse-data

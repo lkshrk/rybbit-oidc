@@ -1,0 +1,80 @@
+services:
+  runner:
+    build:
+      context: ../..
+      dockerfile: e2e/oidc/Dockerfile
+    working_dir: /repo
+    volumes:
+      - ../..:/repo
+      - ${OIDC_E2E_NODE_MODULES_ROOT:-/tmp/rybbit-oidc-e2e-node-modules}/shared:/repo/shared/node_modules
+      - ${OIDC_E2E_NODE_MODULES_ROOT:-/tmp/rybbit-oidc-e2e-node-modules}/server:/repo/server/node_modules
+      - ${OIDC_E2E_NODE_MODULES_ROOT:-/tmp/rybbit-oidc-e2e-node-modules}/client:/repo/client/node_modules
+    environment:
+      - CI=1
+      - OIDC_E2E_POSTGRES_HOST=postgres
+      - OIDC_E2E_POSTGRES_PORT=5432
+      - OIDC_E2E_REDIS_HOST=redis
+      - OIDC_E2E_REDIS_PORT=6379
+      - OIDC_E2E_CLICKHOUSE_HOST=http://clickhouse:8123
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.4.2
+    tmpfs:
+      - /var/lib/clickhouse
+    ports:
+      - "18123:8123"
+    environment:
+      - CLICKHOUSE_DB=analytics
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=frog
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  postgres:
+    image: postgres:17.4
+    tmpfs:
+      - /var/lib/postgresql/data
+    ports:
+      - "15432:5432"
+    environment:
+      - POSTGRES_USER=frog
+      - POSTGRES_PASSWORD=frog
+      - POSTGRES_DB=analytics
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U frog -d analytics"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    tmpfs:
+      - /data
+    ports:
+      - "16379:6379"
+    command:
+      - redis-server
+      - --requirepass
+      - changeme
+      - --appendonly
+      - "no"
+      - --maxmemory-policy
+      - noeviction
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "changeme", "--no-auth-warning", "ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+      start_period: 5s

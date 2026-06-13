@@ -1,0 +1,10 @@
+{
+  "name": "rybbit-oidc-e2e-runner",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "devDependencies": {
+    "@playwright/test": "1.60.0",
+    "shiplightai": "0.1.83"
+  }
+}

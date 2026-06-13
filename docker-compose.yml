@@ -123,6 +123,14 @@ services:
       - LITE_DASHBOARD=${LITE_DASHBOARD}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL}
+      # Optional OpenID Connect provider.
+      - OIDC_NAME=${OIDC_NAME}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
+      - OIDC_DISCOVERY_URL=${OIDC_DISCOVERY_URL}
+      - OIDC_SCOPES=${OIDC_SCOPES}
+      - OIDC_GROUP_CLAIM=${OIDC_GROUP_CLAIM}
+      - OIDC_GROUP_MAPPING=${OIDC_GROUP_MAPPING}
     depends_on:
       clickhouse:
         condition: service_healthy
