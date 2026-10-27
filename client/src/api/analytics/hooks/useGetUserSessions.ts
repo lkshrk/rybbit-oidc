@@ -42,7 +42,20 @@ export function useGetSessions({
     : buildApiParams(timeOverride || time, { filters: filteredFilters });
 
   return useQuery<{ data: GetSessionsResponse }>({
-    queryKey: ["sessions", timeOverride || time, site, filteredFilters, userId, page, limit, identifiedOnly, timezone, minPageviews, minEvents, minDuration],
+    queryKey: [
+      "sessions",
+      timeOverride || time,
+      site,
+      filteredFilters,
+      userId,
+      page,
+      limit,
+      identifiedOnly,
+      timezone,
+      minPageviews,
+      minEvents,
+      minDuration,
+    ],
     queryFn: () => {
       return fetchSessions(site, {
         ...params,
@@ -56,6 +69,7 @@ export function useGetSessions({
       });
     },
     staleTime: Infinity,
+    enabled: !!site,
   });
 }
 
@@ -100,6 +114,7 @@ export function useGetSessionsInfinite({
     },
     staleTime: Infinity,
     refetchInterval,
+    enabled: !!site,
   });
 }
 
