@@ -5,8 +5,6 @@
 import { useCallback } from "react";
 import { useExtracted } from "next-intl";
 
-export type TranslationFunction = (key: string, values?: Record<string, string>) => string;
-
 export type EventType =
   | "pageview"
   | "custom_event"
@@ -34,6 +32,34 @@ export const EVENT_TYPE_CONFIG: EventTypeConfig[] = [
   { value: "error", label: "Error", colorClass: "text-red-400" },
 ];
 
+export function useEventTypeLabel() {
+  const t = useExtracted();
+
+  return useCallback(
+    (type: string): string => {
+      switch (type) {
+        case "pageview":
+          return t("Pageview");
+        case "outbound":
+          return t("Outbound");
+        case "button_click":
+          return t("Button Click");
+        case "copy":
+          return t("Copy");
+        case "form_submit":
+          return t("Form Submit");
+        case "input_change":
+          return t("Input Change");
+        case "error":
+          return t("Error");
+        default:
+          return t("Event");
+      }
+    },
+    [t]
+  );
+}
+
 // ============================================================================
 // Event Display Utilities
 // ============================================================================
@@ -60,21 +86,23 @@ export function useEventDisplayName(): EventDisplayNameFormatter {
         case "outbound":
           return t("Outbound Click");
         case "button_click":
-          if (item.props?.text) return t("Clicked button with text \"{text}\"", { text: String(item.props.text) });
+          if (item.props?.text) return t('Clicked button with text "{text}"', { text: String(item.props.text) });
           return t("Clicked button");
         case "copy": {
           if (!item.props?.text) return t("Copied text");
           const text = String(item.props.text);
-          return t("Copied \"{text}\"", { text: `${text.substring(0, 50)}${text.length > 50 ? "..." : ""}` });
+          return t('Copied "{text}"', { text: `${text.substring(0, 50)}${text.length > 50 ? "..." : ""}` });
         }
         case "form_submit":
-          if (item.props?.formId) return t("Submitted form \"{name}\"", { name: String(item.props.formId) });
-          if (item.props?.formName) return t("Submitted form \"{name}\"", { name: String(item.props.formName) });
-          if (item.props?.formAction) return t("Submitted form to \"{action}\"", { action: String(item.props.formAction) });
+          if (item.props?.formId) return t('Submitted form "{name}"', { name: String(item.props.formId) });
+          if (item.props?.formName) return t('Submitted form "{name}"', { name: String(item.props.formName) });
+          if (item.props?.formAction)
+            return t('Submitted form to "{action}"', { action: String(item.props.formAction) });
           return t("Submitted form");
         case "input_change": {
           const inputType = item.props?.inputType ? `${item.props.inputType} ` : "";
-          if (item.props?.inputName) return t("Changed {type}input \"{name}\"", { type: inputType, name: String(item.props.inputName) });
+          if (item.props?.inputName)
+            return t('Changed {type}input "{name}"', { type: inputType, name: String(item.props.inputName) });
           return t("Changed {type}input", { type: inputType });
         }
         default:

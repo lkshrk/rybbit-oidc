@@ -8,13 +8,13 @@ import { Avatar } from "../../../../../components/Avatar";
 import { EventTypeIcon } from "../../../../../components/EventIcons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
 import { useDateTimeFormat } from "../../../../../hooks/useDateTimeFormat";
-import { useEventDisplayName } from "../../../../../lib/events";
+import { useEventDisplayName, useEventTypeLabel } from "../../../../../lib/events";
 import { getTimezone } from "../../../../../lib/store";
 import { getCountryName, getUserDisplayName, truncateString } from "../../../../../lib/utils";
 import { Browser } from "../../../components/shared/icons/Browser";
 import { CountryFlag } from "../../../components/shared/icons/CountryFlag";
 import { OperatingSystem } from "../../../components/shared/icons/OperatingSystem";
-import { buildEventPath, getEventTypeLabel, getMainData, parseEventProperties } from "./eventLogUtils";
+import { buildEventPath, getMainData, parseEventProperties } from "./eventLogUtils";
 import { DeviceIcon } from "../../../components/shared/icons/Device";
 
 interface EventRowProps {
@@ -26,15 +26,14 @@ interface EventRowProps {
 export function EventRow({ event, site, onClick }: EventRowProps) {
   const t = useExtracted();
   const getEventDisplayName = useEventDisplayName();
+  const getEventTypeLabel = useEventTypeLabel();
   const { locale, hour12, formatRelative } = useDateTimeFormat();
   const eventProperties = parseEventProperties(event);
-  const eventTime = DateTime.fromSQL(event.timestamp, { zone: "utc" })
-    .setLocale(locale)
-    .setZone(getTimezone());
+  const eventTime = DateTime.fromSQL(event.timestamp, { zone: "utc" }).setLocale(locale).setZone(getTimezone());
   const pagePath = buildEventPath(event);
   const pageUrl = `https://${event.hostname}${pagePath}`;
   const isPageview = event.type === "pageview";
-  const eventData = isPageview ? null : getMainData(event, eventProperties, getEventDisplayName, t);
+  const eventData = isPageview ? null : getMainData(event, eventProperties, getEventDisplayName, t("Event"));
   const userProfileId = event.identified_user_id || event.user_id;
   const displayName = getUserDisplayName({
     identified_user_id: event.identified_user_id || undefined,
@@ -55,7 +54,7 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
             </div>
           </TooltipTrigger>
           <TooltipContent>
-            <span>{getEventTypeLabel(event.type, t)}</span>
+            <span>{getEventTypeLabel(event.type)}</span>
           </TooltipContent>
         </Tooltip>
       </div>
@@ -78,7 +77,9 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
           className="flex items-center gap-2"
         >
           <Avatar size={18} id={event.user_id} lastActiveTime={eventTime} />
-          <div className="text-neutral-700 dark:text-neutral-200 truncate max-w-[160px] hover:underline">{displayName}</div>
+          <div className="text-neutral-700 dark:text-neutral-200 truncate max-w-[160px] hover:underline">
+            {displayName}
+          </div>
         </Link>
       </div>
 
@@ -141,8 +142,8 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
       </div>
 
       <div className="text-neutral-600 dark:text-neutral-300 px-2 py-1 truncate">
-        {eventData && (
-          eventData.url ? (
+        {eventData &&
+          (eventData.url ? (
             <Link
               href={eventData.url}
               target="_blank"
@@ -154,11 +155,8 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
               {truncateString(eventData.label, 60)}
             </Link>
           ) : (
-            <span title={eventData.label}>
-              {truncateString(eventData.label, 60)}
-            </span>
-          )
-        )}
+            <span title={eventData.label}>{truncateString(eventData.label, 60)}</span>
+          ))}
       </div>
     </div>
   );
