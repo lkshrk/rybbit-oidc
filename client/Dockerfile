@@ -40,7 +40,7 @@ ENV NEXT_PUBLIC_DEPLOYMENT=${NEXT_PUBLIC_DEPLOYMENT}
 ENV NEXT_PUBLIC_LITE_DASHBOARD=${NEXT_PUBLIC_LITE_DASHBOARD}
 
 WORKDIR /app/client
-RUN npm run build
+RUN test -n "$NEXT_PUBLIC_BACKEND_URL" && npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
